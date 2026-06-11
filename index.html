@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#FFFFFF">
+<title>資産</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --card:#F6F7F9; --card2:#EEF0F3;
+    --text:#0C0E12; --sub:#9AA1AB; --ghost:#E4E7EB; --line:#E8EAEE;
+    --acc:#15B66E; --accbg:rgba(21,182,110,0.10);
+    --red:#E5484D; --redbg:rgba(229,72,77,0.09);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif;
+    -webkit-font-smoothing:antialiased;}
+  body{max-width:480px;margin:0 auto;min-height:100vh;
+    padding:0 20px calc(40px + env(safe-area-inset-bottom));}
+  button,input{font-family:inherit;color:inherit;outline:none;}
+  button{cursor:pointer;border:none;background:none;}
+
+  /* ===== 総資産（中央・カウンター） ===== */
+  .hero{padding:calc(54px + env(safe-area-inset-top)) 4px 42px;text-align:center;}
+  .hero .lbl{font-size:11px;letter-spacing:3px;color:var(--sub);
+    text-transform:uppercase;font-weight:600;}
+  .counter{margin-top:14px;display:inline-flex;align-items:baseline;
+    justify-content:center;font-weight:700;font-variant-numeric:tabular-nums;}
+  .counter .yen{font-size:24px;font-weight:600;color:var(--sub);margin-right:7px;}
+  .counter .digits{font-size:44px;line-height:1;display:inline-flex;}
+  .counter .digits span{display:inline-block;width:0.60em;text-align:center;}
+  .counter .digits .g{color:var(--ghost);}
+  .counter .digits .c{color:var(--sub);width:0.30em;}
+  .counter .digits .c.g{color:var(--ghost);}
+
+  /* ===== リスト ===== */
+  .list{display:flex;flex-direction:column;gap:10px;}
+  .card{background:var(--card);border-radius:18px;overflow:hidden;
+    transition:background .18s,box-shadow .18s;}
+  .card.open{background:var(--card2);box-shadow:0 0 0 1px var(--line) inset;}
+  .row{display:flex;align-items:center;width:100%;padding:17px 18px;gap:13px;text-align:left;}
+  .row .dot{width:7px;height:7px;border-radius:50%;background:var(--sub);flex:none;
+    transition:background .18s,box-shadow .18s;}
+  .card.open .row .dot{background:var(--acc);box-shadow:0 0 8px var(--acc);}
+  .row .nm{flex:1;font-size:15px;font-weight:500;letter-spacing:0.3px;}
+
+  /* 項目のカウンター */
+  .mini{display:inline-flex;align-items:baseline;font-weight:600;
+    font-variant-numeric:tabular-nums;}
+  .mini .y{font-size:11px;color:var(--sub);margin-right:3px;font-weight:500;}
+  .mini .digits{font-size:16px;display:inline-flex;}
+  .mini .digits span{display:inline-block;width:0.58em;text-align:center;}
+  .mini .digits .g{color:var(--ghost);}
+  .mini .digits .c{color:var(--sub);width:0.28em;}
+  .mini .digits .c.g{color:var(--ghost);}
+
+  /* ===== 編集（＋−） ===== */
+  .pad{max-height:0;overflow:hidden;transition:max-height .24s cubic-bezier(.4,0,.2,1);}
+  .card.open .pad{max-height:230px;}
+  .pad-in{padding:2px 18px 20px;}
+  .amt-in{width:100%;background:var(--bg);border:1.5px solid var(--line);
+    border-radius:13px;font-size:25px;font-weight:600;text-align:center;
+    padding:15px 0;color:var(--text);font-variant-numeric:tabular-nums;}
+  .amt-in:focus{border-color:var(--acc);}
+  .amt-in::placeholder{color:var(--sub);font-weight:400;}
+  .ops{display:flex;gap:12px;margin-top:12px;}
+  .op{flex:1;padding:16px 0;border-radius:13px;font-size:15px;font-weight:700;
+    letter-spacing:1px;transition:transform .08s;}
+  .op.minus{background:var(--redbg);color:var(--red);}
+  .op.plus{background:var(--accbg);color:var(--acc);}
+  .op:active{transform:scale(0.96);}
+
+  /* ===== 追加 ===== */
+  .add{width:100%;margin-top:10px;padding:18px 0;border-radius:18px;
+    border:1.5px dashed var(--line);color:var(--sub);font-size:14px;font-weight:500;
+    transition:border-color .15s,color .15s;}
+  .add:active{border-color:var(--acc);color:var(--acc);}
+  .add-form{background:var(--card);border-radius:18px;padding:18px;margin-top:10px;display:none;}
+  .add-form.show{display:block;}
+  .add-form input{width:100%;background:var(--bg);border:1.5px solid var(--line);
+    border-radius:13px;font-size:16px;padding:14px;color:var(--text);margin-bottom:10px;}
+  .add-form input:focus{border-color:var(--acc);}
+  .add-btns{display:flex;gap:10px;}
+  .add-btns button{flex:1;padding:14px 0;border-radius:13px;font-size:14px;font-weight:600;}
+  .add-cancel{background:var(--card2);color:var(--sub);}
+  .add-ok{background:var(--acc);color:#fff;}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);
+    bottom:calc(30px + env(safe-area-inset-bottom));
+    background:var(--text);color:#fff;
+    font-size:13px;padding:11px 20px;border-radius:24px;opacity:0;
+    transition:opacity .2s;pointer-events:none;z-index:10;
+    font-variant-numeric:tabular-nums;}
+  .toast.show{opacity:0.94;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="lbl">Total Balance</div>
+  <div class="counter">
+    <span class="yen">¥</span>
+    <span class="digits" id="digits"></span>
+  </div>
+</div>
+
+<div class="list" id="list"></div>
+
+<button class="add" id="addBtn" onclick="toggleAdd()">＋ 資産を追加</button>
+<div class="add-form" id="addForm">
+  <input id="naName" type="text" placeholder="名前（例：楽天Pay）">
+  <input id="naBal" type="text" inputmode="numeric" placeholder="初期残高（任意）">
+  <div class="add-btns">
+    <button class="add-cancel" onclick="toggleAdd()">キャンセル</button>
+    <button class="add-ok" onclick="addAsset()">追加</button>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+const KEY='shisan_v2';
+const WIDTH=8;            // 8桁固定（¥00,000,000 = 最大9999万）
+let state=load();
+let openId=null;
+
+function load(){
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw) return JSON.parse(raw);
+    const old=localStorage.getItem('shisan_v1');
+    if(old){ const d=JSON.parse(old);
+      if(d.assets) return {assets:d.assets.map(a=>({id:a.id,name:a.name,balance:a.balance}))}; }
+  }catch(e){}
+  return {assets:['現金','PayPay','メルペイ','銀行','Suica'].map(n=>({id:uid(),name:n,balance:0}))};
+}
+function save(){ localStorage.setItem(KEY,JSON.stringify(state)); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function fmt(n){ return n.toLocaleString('ja-JP'); }
+function num(v){ const n=parseInt(String(v).replace(/[^0-9]/g,''),10); return isNaN(n)?0:n; }
+
+function toast(m){
+  const t=document.getElementById('toastEl');
+  t.textContent=m; t.classList.add('show');
+  clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+/* === カウンター描画 ===
+   targetEl に 8桁固定で出力。上位の埋めゼロは .g（薄色）。
+   桁あふれ時は自動拡張。負数は先頭に - 。 */
+function paintCounter(targetEl, total){
+  const neg=total<0;
+  const ds=String(Math.abs(total));
+  const width=Math.max(WIDTH, ds.length);
+  const padded=ds.padStart(width,'0');
+  const firstReal=width-ds.length;
+  targetEl.innerHTML='';
+  if(neg){ const m=document.createElement('span'); m.className='c'; m.textContent='-'; targetEl.appendChild(m); }
+  for(let i=0;i<padded.length;i++){
+    const posFromRight=padded.length-i;
+    if(i>0 && posFromRight%3===0){
+      const c=document.createElement('span');
+      c.className='c'+(i<=firstReal?' g':'');
+      c.textContent=','; targetEl.appendChild(c);
+    }
+    const s=document.createElement('span');
+    s.className=(i<firstReal?'g':'');
+    s.textContent=padded[i];
+    targetEl.appendChild(s);
+  }
+}
+
+function render(){
+  paintCounter(document.getElementById('digits'),
+    state.assets.reduce((s,a)=>s+a.balance,0));
+
+  const list=document.getElementById('list');
+  list.innerHTML='';
+  state.assets.forEach(a=>{
+    const card=document.createElement('div');
+    card.className='card'+(openId===a.id?' open':'');
+
+    const row=document.createElement('button');
+    row.className='row';
+    row.innerHTML='<span class="dot"></span><span class="nm"></span>'+
+      '<span class="mini"><span class="y">¥</span><span class="digits" id="d_'+a.id+'"></span></span>';
+    row.querySelector('.nm').textContent=a.name;
+    row.onclick=()=>{ openId=(openId===a.id?null:a.id); render();
+      if(openId===a.id) setTimeout(()=>document.getElementById('amt_'+a.id)?.focus(),260); };
+    card.appendChild(row);
+
+    const pad=document.createElement('div');
+    pad.className='pad';
+    pad.innerHTML=
+      '<div class="pad-in">'+
+        '<input class="amt-in" id="amt_'+a.id+'" type="text" inputmode="numeric" placeholder="金額">'+
+        '<div class="ops">'+
+          '<button class="op minus">−  減らす</button>'+
+          '<button class="op plus">＋  増やす</button>'+
+        '</div>'+
+      '</div>';
+    const input=pad.querySelector('.amt-in');
+    input.oninput=e=>{ e.target.value=e.target.value===''?'':fmt(num(e.target.value)); };
+    pad.querySelector('.minus').onclick=()=>applyOp(a,-1,input);
+    pad.querySelector('.plus').onclick=()=>applyOp(a,1,input);
+    card.appendChild(pad);
+
+    list.appendChild(card);
+    paintCounter(card.querySelector('#d_'+a.id), a.balance);
+  });
+}
+
+function applyOp(a,sign,input){
+  const v=num(input.value);
+  if(v<=0){ toast('金額を入力してください'); return; }
+  a.balance += sign*v;
+  openId=null; save(); render();
+  toast((sign>0?'＋':'−')+'¥'+fmt(v)+'  →  '+a.name+' ¥'+fmt(a.balance));
+}
+
+function toggleAdd(){
+  const f=document.getElementById('addForm'), b=document.getElementById('addBtn');
+  const show=!f.classList.contains('show');
+  f.classList.toggle('show',show);
+  b.style.display=show?'none':'block';
+  if(show) setTimeout(()=>document.getElementById('naName').focus(),50);
+  else { document.getElementById('naName').value=''; document.getElementById('naBal').value=''; }
+}
+function addAsset(){
+  const name=document.getElementById('naName').value.trim();
+  const bal=num(document.getElementById('naBal').value);
+  if(!name){ toast('名前を入力してください'); return; }
+  state.assets.push({id:uid(),name,balance:bal});
+  toggleAdd(); save(); render(); toast(name+' を追加しました');
+}
+
+render();
+</script>
+</body>
+</html>
