@@ -49,6 +49,8 @@
     transition:background .18s,box-shadow .18s;}
   .card.open .row .dot{background:var(--acc);box-shadow:0 0 8px var(--acc);}
   .row .nm{flex:1;font-size:15px;font-weight:500;letter-spacing:0.3px;}
+  .row .tag{font-size:10px;color:var(--sub);border:1px solid var(--line);
+    border-radius:6px;padding:2px 6px;margin-right:8px;letter-spacing:0.5px;}
 
   .mini{display:inline-flex;align-items:baseline;font-weight:600;
     font-variant-numeric:tabular-nums;}
@@ -127,14 +129,23 @@ let state=load();
 let openId=null;
 
 function load(){
+  let d=null;
   try{
     const raw=localStorage.getItem(KEY);
-    if(raw){ const d=JSON.parse(raw); if(!d.history) d.history=[]; return d; }
-    const old=localStorage.getItem('shisan_v1');
-    if(old){ const d=JSON.parse(old);
-      if(d.assets) return {assets:d.assets.map(a=>({id:a.id,name:a.name,balance:a.balance})),history:[]}; }
+    if(raw){ d=JSON.parse(raw); }
+    else {
+      const old=localStorage.getItem('shisan_v1');
+      if(old){ const o=JSON.parse(old);
+        if(o.assets) d={assets:o.assets.map(a=>({id:a.id,name:a.name,balance:a.balance})),history:[]}; }
+    }
   }catch(e){}
-  return {assets:['現金','PayPay','メルペイ','銀行','Suica'].map(n=>({id:uid(),name:n,balance:0})),history:[]};
+  if(!d) d={assets:['現金','PayPay','メルペイ','銀行','Suica'].map(n=>({id:uid(),name:n,balance:0,invest:false})),history:[]};
+  if(!d.history) d.history=[];
+  // 投資カードが無ければ末尾に追加（総資産・履歴に含めない）
+  if(!d.assets.some(a=>a.invest)){
+    d.assets.push({id:uid(),name:'投資',balance:0,invest:true});
+  }
+  return d;
 }
 function save(){ localStorage.setItem(KEY,JSON.stringify(state)); }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
@@ -177,7 +188,7 @@ function fmtWhen(ts){
 
 function render(){
   paintCounter(document.getElementById('digits'),
-    state.assets.reduce((s,a)=>s+a.balance,0));
+    state.assets.filter(a=>!a.invest).reduce((s,a)=>s+a.balance,0));
 
   // 資産リスト
   const list=document.getElementById('list');
@@ -189,6 +200,7 @@ function render(){
     const row=document.createElement('button');
     row.className='row';
     row.innerHTML='<span class="dot"></span><span class="nm"></span>'+
+      (a.invest?'<span class="tag">対象外</span>':'')+
       '<span class="mini"><span class="y">¥</span><span class="digits" id="d_'+a.id+'"></span></span>';
     row.querySelector('.nm').textContent=a.name;
     row.onclick=()=>{ openId=(openId===a.id?null:a.id); render();
@@ -219,7 +231,7 @@ function render(){
 function renderHistory(){
   const el=document.getElementById('histList');
   el.innerHTML='';
-  const items=[...state.history].sort((a,b)=>b.ts-a.ts).slice(0,50);
+  const items=[...state.history].sort((a,b)=>b.ts-a.ts).slice(0,6);
   if(items.length===0){
     el.innerHTML='<div class="hist-empty">まだ記録はありません</div>';
     return;
@@ -244,7 +256,7 @@ function applyOp(a,sign,input){
   if(v<=0){ toast('金額を入力してください'); return; }
   const delta=sign*v;
   a.balance+=delta;
-  state.history.push({id:uid(),assetId:a.id,delta,ts:Date.now()});
+  if(!a.invest) state.history.push({id:uid(),assetId:a.id,delta,ts:Date.now()});
   openId=null; save(); render();
   toast((sign>0?'＋':'−')+'¥'+fmt(v)+'  →  '+a.name+' ¥'+fmt(a.balance));
 }
