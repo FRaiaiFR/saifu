@@ -38,6 +38,14 @@
   .counter .digits .g{color:var(--ghost);}
   .counter .digits .c{color:var(--sub);width:0.30em;}
   .counter .digits .c.g{color:var(--ghost);}
+  .sub-counter{margin-top:12px;}
+  .sub-counter .yen{font-size:13px;margin-right:4px;}
+  .sub-counter .digits{font-size:20px;}
+  .sub-counter .digits span{width:0.58em;}
+  .sub-counter .digits .c{width:0.28em;}
+  .sub-counter .tag2{font-size:10px;color:var(--sub);border:1px solid var(--line);
+    border-radius:6px;padding:2px 6px;margin-right:9px;letter-spacing:0.5px;
+    align-self:center;}
 
   /* ===== リスト ===== */
   .list{display:flex;flex-direction:column;gap:10px;}
@@ -107,6 +115,11 @@
   <div class="counter">
     <span class="yen">¥</span>
     <span class="digits" id="digits"></span>
+  </div>
+  <div class="counter sub-counter">
+    <span class="tag2">投資込</span>
+    <span class="yen">¥</span>
+    <span class="digits" id="digitsAll"></span>
   </div>
 </div>
 
@@ -189,6 +202,8 @@ function fmtWhen(ts){
 function render(){
   paintCounter(document.getElementById('digits'),
     state.assets.filter(a=>!a.invest).reduce((s,a)=>s+a.balance,0));
+  paintCounter(document.getElementById('digitsAll'),
+    state.assets.reduce((s,a)=>s+a.balance,0));
 
   // 資産リスト
   const list=document.getElementById('list');
@@ -231,7 +246,7 @@ function render(){
 function renderHistory(){
   const el=document.getElementById('histList');
   el.innerHTML='';
-  const items=[...state.history].sort((a,b)=>b.ts-a.ts).slice(0,6);
+  const items=[...state.history].sort((a,b)=>b.ts-a.ts).slice(0,4);
   if(items.length===0){
     el.innerHTML='<div class="hist-empty">まだ記録はありません</div>';
     return;
